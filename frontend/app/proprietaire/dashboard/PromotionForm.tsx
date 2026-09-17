@@ -10,7 +10,6 @@ interface PromotionFormProps {
 }
 
 export function PromotionForm({ propertyId, promotedUntil }: PromotionFormProps) {
-  const provider = 'wave' as const;
   const [days, setDays] = useState('7');
   const [pending, setPending] = useState(false);
   const [message, setMessage] = useState('');
@@ -22,12 +21,12 @@ export function PromotionForm({ propertyId, promotedUntil }: PromotionFormProps)
     setPending(true);
     setMessage('');
     setPendingOrderId(null);
-    const result = await createPromotionOrderAction(propertyId, provider, Number(days));
+    const result = await createPromotionOrderAction(propertyId, Number(days));
 
     if ('error' in result) {
       setMessage(result.error!);
     } else if (result.checkoutUrl) {
-      window.location.href = result.checkoutUrl; // vrai paiement configuré
+      window.location.href = result.checkoutUrl; // vraie page de paiement PayDunya
     } else {
       setMessage(result.message);
       setPendingOrderId(result.orderId); // mode démo : propose de simuler
@@ -55,7 +54,7 @@ export function PromotionForm({ propertyId, promotedUntil }: PromotionFormProps)
       </p>
       <div className="mt-2 flex flex-wrap items-center gap-2">
         <span className="rounded-button border border-neutral-200 bg-white px-2.5 py-1.5 text-xs font-medium text-neutral-900">
-          💳 Wave
+          💳 Wave / Orange Money / Free Money
         </span>
         <select
           value={days}
@@ -87,7 +86,7 @@ export function PromotionForm({ propertyId, promotedUntil }: PromotionFormProps)
           disabled={pending}
           className="mt-2 rounded-button border border-dashed border-neutral-200 px-3 py-1.5 text-xs font-medium text-neutral-500 hover:border-primary hover:text-primary"
         >
-          🧪 Simuler le paiement (mode démo, pas de compte marchand configuré)
+          🧪 Simuler le paiement (mode démo, pas de compte PayDunya configuré)
         </button>
       )}
     </div>

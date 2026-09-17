@@ -59,6 +59,7 @@ enum ReportReason {
 enum PaymentProvider {
   wave
   orange_money
+  paydunya
 }
 
 enum PaymentStatus {

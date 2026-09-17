@@ -1,9 +1,8 @@
 node_modules/
 .next/
 dist/
-coverage/
-
-backend/.env
-frontend/.env.local
-
-*.log
+*.tsbuildinfo
+.env
+.env.local
+.DS_Store
+npm-debug.log*

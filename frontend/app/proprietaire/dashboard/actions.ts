@@ -11,11 +11,7 @@ interface PromotionOrderResult {
   message: string;
 }
 
-export async function createPromotionOrderAction(
-  propertyId: string,
-  provider: 'wave' | 'orange_money',
-  promotionDays: number,
-) {
+export async function createPromotionOrderAction(propertyId: string, promotionDays: number) {
   const token = getSessionToken();
   if (!token) return { error: 'Session expirée, reconnecte-toi.' };
 
@@ -23,7 +19,7 @@ export async function createPromotionOrderAction(
     const order = await apiFetch<PromotionOrderResult>(`/payments/properties/${propertyId}/promotion`, {
       method: 'POST',
       token,
-      body: JSON.stringify({ provider, promotionDays }),
+      body: JSON.stringify({ promotionDays }),
     });
     return order;
   } catch (error) {

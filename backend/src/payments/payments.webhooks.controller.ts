@@ -1,28 +1,19 @@
-import { Controller, Post, Req, Headers, HttpCode } from '@nestjs/common';
+import { Controller, Post, Req, HttpCode } from '@nestjs/common';
 import type { RawBodyRequest } from '@nestjs/common';
 import type { Request } from 'express';
 import { PaymentsService } from './payments.service';
 
-// Routes publiques : appelées par les serveurs de Wave / PayDunya, pas par le navigateur.
-// La sécurité repose sur la vérification de signature (Wave) ou la re-vérification côté
-// serveur (PayDunya), pas sur un JWT.
+// Route publique : appelée par les serveurs de PayDunya, pas par le navigateur.
+// La sécurité repose sur la re-vérification de l'état de la facture directement auprès de
+// PayDunya (voir handlePaydunyaEvent), pas sur une vérification de signature du corps reçu.
 @Controller('payments/webhooks')
 export class PaymentsWebhooksController {
   constructor(private paymentsService: PaymentsService) {}
 
-  @Post('wave')
+  @Post('paydunya')
   @HttpCode(200)
-  async wave(@Req() req: RawBodyRequest<Request>, @Headers('wave-signature') signature: string) {
-    this.paymentsService.verifyWaveSignature(signature, req.rawBody as Buffer);
-    const payload = JSON.parse((req.rawBody as Buffer).toString('utf8'));
-    return this.paymentsService.handleWaveEvent(payload);
-  }
-
-  // Notification PayDunya pour Orange Money (et Wave/Free Money si utilisés via cet agrégateur).
-  @Post('orange-money')
-  @HttpCode(200)
-  async orangeMoney(@Req() req: RawBodyRequest<Request>) {
+  async paydunya(@Req() req: RawBodyRequest<Request>) {
     const rawBody = (req.rawBody as Buffer).toString('utf8');
-    return this.paymentsService.handleOrangeMoneyEvent(rawBody);
+    return this.paymentsService.handlePaydunyaEvent(rawBody);
   }
 }

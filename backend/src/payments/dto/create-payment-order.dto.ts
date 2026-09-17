@@ -1,10 +1,6 @@
-import { IsEnum, IsInt, IsPositive, Max, Min } from 'class-validator';
-import { PaymentProvider } from '@prisma/client';
+import { IsInt, IsPositive, Max, Min } from 'class-validator';
 
 export class CreatePaymentOrderDto {
-  @IsEnum(PaymentProvider)
-  provider: PaymentProvider;
-
   @IsInt()
   @IsPositive()
   @Min(1)
