@@ -1,0 +1,303 @@
+// Schéma de la plateforme de logement étudiant au Sénégal
+// Documentation: chaque modèle correspond à une table définie à l'ÉTAPE 3
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  student
+  owner
+  admin
+}
+
+enum PropertyType {
+  chambre_individuelle
+  chambre_partagee
+  studio
+  appartement
+  colocation
+  residence
+}
+
+enum PropertyStatus {
+  pending
+  approved
+  rejected
+  suspended
+  expired
+}
+
+enum PricePeriod {
+  mois
+  trimestre
+  annee
+}
+
+enum ReportStatus {
+  open
+  reviewed
+  dismissed
+  action_taken
+}
+
+enum ReportReason {
+  fausse_annonce
+  prix_trompeur
+  photos_trompeuses
+  logement_inexistant
+  contenu_inapproprie
+  arnaque
+  autre
+}
+
+enum PaymentProvider {
+  wave
+  orange_money
+}
+
+enum PaymentStatus {
+  pending
+  paid
+  failed
+  refunded
+}
+
+model User {
+  id           String   @id @default(uuid())
+  role         UserRole
+  firstName    String   @map("first_name")
+  lastName     String   @map("last_name")
+  email        String   @unique
+  phone        String   @unique
+  passwordHash String   @map("password_hash")
+  isActive     Boolean  @default(true) @map("is_active")
+  isVerified   Boolean  @default(false) @map("is_verified")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  student      Student?
+  owner        Owner?
+  reports      Report[]      @relation("reporter")
+  adminActions AdminAction[]
+
+  @@map("users")
+}
+
+model Student {
+  userId        String       @id @map("user_id")
+  user          User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  institutionId String?      @map("institution_id")
+  institution   Institution? @relation(fields: [institutionId], references: [id])
+  cityId        String?      @map("city_id")
+  city          City?        @relation(fields: [cityId], references: [id])
+
+  favorites       Favorite[]
+  contactRequests ContactRequest[]
+
+  @@map("students")
+}
+
+model Owner {
+  userId         String   @id @map("user_id")
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  ownerType      String?  @map("owner_type")
+  phoneVerified  Boolean  @default(false) @map("phone_verified")
+
+  properties Property[]
+  paymentOrders PaymentOrder[]
+
+  @@map("owners")
+}
+
+model City {
+  id       String  @id @default(uuid())
+  name     String
+  slug     String  @unique
+  isActive Boolean @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  neighborhoods Neighborhood[]
+  institutions  Institution[]
+  properties    Property[]
+  students      Student[]
+
+  @@map("cities")
+}
+
+model Neighborhood {
+  id     String @id @default(uuid())
+  cityId String @map("city_id")
+  city   City   @relation(fields: [cityId], references: [id], onDelete: Cascade)
+  name   String
+
+  properties Property[]
+
+  @@unique([cityId, name])
+  @@map("neighborhoods")
+}
+
+model Institution {
+  id        String   @id @default(uuid())
+  cityId    String   @map("city_id")
+  city      City     @relation(fields: [cityId], references: [id])
+  name      String
+  type      String?
+  latitude  Decimal? @db.Decimal(10, 7)
+  longitude Decimal? @db.Decimal(10, 7)
+
+  properties Property[]
+  students   Student[]
+
+  @@map("institutions")
+}
+
+model Property {
+  id                String         @id @default(uuid())
+  ownerId           String         @map("owner_id")
+  owner             Owner          @relation(fields: [ownerId], references: [userId])
+  title             String
+  slug              String         @unique
+  description       String
+  type              PropertyType
+  cityId            String         @map("city_id")
+  city              City           @relation(fields: [cityId], references: [id])
+  neighborhoodId    String?        @map("neighborhood_id")
+  neighborhood      Neighborhood?  @relation(fields: [neighborhoodId], references: [id])
+  institutionId     String?        @map("institution_id")
+  institution       Institution?   @relation(fields: [institutionId], references: [id])
+  distanceKm        Decimal?       @map("distance_km") @db.Decimal(4, 1)
+  latitude          Decimal?       @db.Decimal(10, 7)
+  longitude         Decimal?       @db.Decimal(10, 7)
+  price             Int
+  pricePeriod       PricePeriod    @default(mois) @map("price_period")
+  deposit           Int?
+  furnished         Boolean        @default(false)
+  capacity          Int            @default(1)
+  minDurationMonths Int?           @map("min_duration_months")
+  status            PropertyStatus @default(pending)
+  rejectionReason   String?        @map("rejection_reason")
+  isDemo            Boolean        @default(false) @map("is_demo")
+  availableFrom     DateTime?      @map("available_from")
+  publishedAt       DateTime?      @map("published_at")
+  expiresAt         DateTime?      @map("expires_at")
+  viewsCount         Int            @default(0) @map("views_count")
+  promotedUntil      DateTime?      @map("promoted_until")
+  createdAt         DateTime       @default(now()) @map("created_at")
+  updatedAt         DateTime       @updatedAt @map("updated_at")
+
+  images          PropertyImage[]
+  features        PropertyFeature[]
+  favorites       Favorite[]
+  contactRequests ContactRequest[]
+  reports         Report[]
+  paymentOrders   PaymentOrder[]
+
+  @@index([cityId, status, price, type])
+  @@index([status])
+  @@index([promotedUntil])
+  @@map("properties")
+}
+
+model PaymentOrder {
+  id                String          @id @default(uuid())
+  propertyId        String          @map("property_id")
+  property          Property        @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  ownerId           String          @map("owner_id")
+  owner             Owner           @relation(fields: [ownerId], references: [userId], onDelete: Cascade)
+  provider          PaymentProvider
+  status            PaymentStatus   @default(pending)
+  amount            Int
+  currency          String          @default("XOF")
+  providerReference String?         @unique @map("provider_reference")
+  promotionDays     Int             @map("promotion_days")
+  paidAt            DateTime?       @map("paid_at")
+  createdAt         DateTime        @default(now()) @map("created_at")
+  updatedAt         DateTime        @updatedAt @map("updated_at")
+
+  @@index([ownerId, status])
+  @@index([propertyId, status])
+  @@map("payment_orders")
+}
+
+model PropertyImage {
+  id         String   @id @default(uuid())
+  propertyId String   @map("property_id")
+  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  url        String
+  position   Int      @default(0)
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  @@map("property_images")
+}
+
+model PropertyFeature {
+  id           String  @id @default(uuid())
+  propertyId   String  @map("property_id")
+  property     Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  featureKey   String  @map("feature_key")
+  featureValue Boolean @default(true) @map("feature_value")
+
+  @@unique([propertyId, featureKey])
+  @@map("property_features")
+}
+
+model Favorite {
+  id         String   @id @default(uuid())
+  studentId  String   @map("student_id")
+  student    Student  @relation(fields: [studentId], references: [userId], onDelete: Cascade)
+  propertyId String   @map("property_id")
+  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  @@unique([studentId, propertyId])
+  @@map("favorites")
+}
+
+model ContactRequest {
+  id         String   @id @default(uuid())
+  propertyId String   @map("property_id")
+  property   Property @relation(fields: [propertyId], references: [id])
+  studentId  String?  @map("student_id")
+  student    Student? @relation(fields: [studentId], references: [userId])
+  name       String
+  phone      String
+  message    String?
+  channel    String   // 'whatsapp' | 'formulaire'
+  isRead     Boolean  @default(false) @map("is_read")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  @@map("contact_requests")
+}
+
+model Report {
+  id          String       @id @default(uuid())
+  propertyId  String       @map("property_id")
+  property    Property     @relation(fields: [propertyId], references: [id])
+  reporterId  String?      @map("reporter_id")
+  reporter    User?        @relation("reporter", fields: [reporterId], references: [id])
+  reason      ReportReason
+  description String?
+  status      ReportStatus @default(open)
+  createdAt   DateTime     @default(now()) @map("created_at")
+
+  @@map("reports")
+}
+
+model AdminAction {
+  id         String   @id @default(uuid())
+  adminId    String   @map("admin_id")
+  admin      User     @relation(fields: [adminId], references: [id])
+  actionType String   @map("action_type")
+  targetType String   @map("target_type")
+  targetId   String   @map("target_id")
+  metadata   Json?
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  @@map("admin_actions")
+}
