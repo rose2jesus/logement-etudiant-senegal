@@ -60,6 +60,21 @@ export default function InscriptionPage() {
 
         <Input label="Mot de passe" name="password" type="password" required minLength={8} />
 
+        <label className="flex items-start gap-2 text-sm text-neutral-700">
+          <input type="checkbox" name="acceptCgu" required className="mt-0.5 h-4 w-4 shrink-0" />
+          <span>
+            J&apos;accepte les{' '}
+            <Link href="/cgu" target="_blank" className="text-primary underline">
+              conditions générales d&apos;utilisation
+            </Link>{' '}
+            et la{' '}
+            <Link href="/confidentialite" target="_blank" className="text-primary underline">
+              politique de confidentialité
+            </Link>
+            .
+          </span>
+        </label>
+
         {state?.error && (
           <p role="alert" className="text-sm text-danger">
             {state.error}
